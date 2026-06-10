@@ -14,7 +14,7 @@ public interface OrderRepository extends JpaRepository<OrderVO,Integer> {
     @Modifying
     @Query(value = "UPDATE ROOM_ORDER SET ORDER_STATUS = 1 , PAID_AMOUNT = :paidAmount, PAYMENT_METHOD = :paymentMethod," +
             "ECPAY_TRADE_NO = :ecpayTradeNo WHERE MERCHANT_TRADE_NO = :merchantTradeNo AND ORDER_STATUS = 0",nativeQuery = true)
-    int completeOrderPayment(@Param("paidAmount") Integer paidAmount,
+    int confirmOrderPayment(@Param("paidAmount") Integer paidAmount,
                      @Param("paymentMethod")Byte paymentMethod,
                      @Param("merchantTradeNo")String merchantTradeNo,
                      @Param("ecpayTradeNo")String ecpayTradeNo);
@@ -25,4 +25,9 @@ public interface OrderRepository extends JpaRepository<OrderVO,Integer> {
     @Modifying
     @Query(value = "UPDATE ROOM_ORDER SET ORDER_STATUS = 3 WHERE ORDER_ID = :orderId AND ORDER_STATUS = 0",nativeQuery = true)
     int canceledOrderPayment(@Param("orderId")Integer orderId);
+
+
+    @Modifying
+    @Query(value ="UPDATE ROOM_ORDER SET ORDER_STATUS = 2 WHERE ORDER_ID = :orderId AND ORDER_STATUS = 1" ,nativeQuery = true)
+    int finishOrder(@Param("orderId") Integer orderId);
 }

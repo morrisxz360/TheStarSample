@@ -142,7 +142,7 @@ public class OrderService {
     @Transactional
     public void confirmOrder(String merChantTradeNo, Integer paidAmount,
                              Byte paymentMethod, String ecpayTradeNo) {
-        int row = orderRepository.completeOrderPayment(paidAmount,
+        int row = orderRepository.confirmOrderPayment(paidAmount,
                 paymentMethod, merChantTradeNo, ecpayTradeNo);
         if (row == 0) {
             throw new IllegalStateException("訂單不存在或是已處理" + merChantTradeNo);
@@ -177,4 +177,6 @@ public class OrderService {
             }
         }
     }
+
+
 }
