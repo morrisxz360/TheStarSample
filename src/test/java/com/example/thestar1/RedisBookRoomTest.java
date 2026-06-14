@@ -36,10 +36,10 @@ class RedisBookRoomTest {
         roomInventoryRepository.initInventory(date, roomTypeId);   // 確保 DB 有這格
         orderService.initRedisRoom(roomTypeId, date);              // 種值進 Redis
 
-        int available = Integer.parseInt(redisTemplate.opsForValue().get(key));
+        int qty = Integer.parseInt(redisTemplate.opsForValue().get(key));
 
         // 扣到剛好全部 → true，Redis 變 0
-        assertTrue(orderService.tryRedisBookRoom(roomTypeId, date, available));
+        assertTrue(orderService.tryRedisBookRoom(roomTypeId, date, qty));
         assertEquals("0", redisTemplate.opsForValue().get(key));
 
         // 再扣 1 → false，且補回去後還是 0
