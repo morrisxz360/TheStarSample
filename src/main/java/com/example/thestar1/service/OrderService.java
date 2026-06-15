@@ -10,8 +10,6 @@ import com.example.thestar1.repository.RefundListRepository;
 import com.example.thestar1.repository.RoomInventoryRepository;
 import com.example.thestar1.repository.RoomTypeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,16 +27,15 @@ public class OrderService {
     private final RoomInventoryRepository roomInventoryRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final RefundListRepository refundListRepository;
-    private final StringRedisTemplate redisTemplate;
+
 
     @Autowired
     public OrderService(OrderRepository orderRepository, RoomInventoryRepository roomInventoryRepository
-            , RoomTypeRepository roomTypeRepository, RefundListRepository refundListRepository, StringRedisTemplate redisTemplate) {
+            , RoomTypeRepository roomTypeRepository, RefundListRepository refundListRepository) {
         this.orderRepository = orderRepository;
         this.roomInventoryRepository = roomInventoryRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.refundListRepository = refundListRepository;
-        this.redisTemplate = redisTemplate;
     }
 
     @Transactional
@@ -101,38 +98,16 @@ public class OrderService {
         dailyBookings.sort(Comparator.comparing((DailyBooking d) -> d.roomTypeId)
                 .thenComparing((DailyBooking d) -> d.date));
 
-        //建立操作了redis的明細list
-        List<DailyBooking> redisBooked = new ArrayList<>();
-
         //使用dailyBookings將存好的每日訂房資料一筆一筆扣進庫存 回傳0交易失敗回滾
-        try {
-            for (DailyBooking d : dailyBookings) {
 
-                initRedisRoom(d.roomTypeId, d.date);
+        for (DailyBooking d : dailyBookings) {
 
-                if (!tryRedisBookRoom(d.roomTypeId, d.date, d.qty)) {
-                    throw new IllegalArgumentException("房型" + d.roomTypeId +
-                            "於" + d.date + "庫存不足，無法完成訂房");
-                }
-
-                //把以扣庫存的明細加入list裡面，以防回滾
-                redisBooked.add(d);
-
-                roomInventoryRepository.initInventory(d.date, d.roomTypeId);
-                int row = roomInventoryRepository.bookRooms(d.date, d.roomTypeId, d.qty);
-                if (row == 0) {
-                    throw new IllegalStateException("房型" + d.roomTypeId +
-                            "於" + d.date + "庫存不足，無法完成訂房");
-                }
+            roomInventoryRepository.initInventory(d.date, d.roomTypeId);
+            int row = roomInventoryRepository.bookRooms(d.date, d.roomTypeId, d.qty);
+            if (row == 0) {
+                throw new IllegalStateException("房型" + d.roomTypeId +
+                        "於" + d.date + "庫存不足，無法完成訂房");
             }
-
-        } catch (RuntimeException e) {
-            //只回滾操作過redis的明細
-            for (DailyBooking d : redisBooked) {
-                redisTemplate.opsForValue()
-                        .increment(roomKey(d.roomTypeId, d.date), d.qty);
-            }
-            throw e;
         }
         //訂房資料存進去後建立訂單
         OrderVO ordervo = new OrderVO();
@@ -253,25 +228,4 @@ public class OrderService {
     }
 
 
-    private String roomKey(Integer roomTypeId, LocalDate date) {
-        return "room:" + roomTypeId + ":" + date;
-    }
-
-    public void initRedisRoom(Integer roomTypeId, LocalDate date) {
-        int room = roomInventoryRepository.checkRedisRoom(roomTypeId, date);
-        String key = roomKey(roomTypeId, date);
-
-        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(room));
-    }
-
-    public boolean tryRedisBookRoom(Integer roomTypeId, LocalDate date, int qty) {
-        String key = roomKey(roomTypeId, date);
-        long result = redisTemplate.opsForValue().decrement(key, qty);
-
-        if (result < 0) {
-            redisTemplate.opsForValue().increment(key, qty);
-            return false;
-        }
-        return true;
-    }
 }

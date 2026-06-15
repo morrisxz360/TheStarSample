@@ -3,6 +3,7 @@ package com.example.thestar1;
 
 import com.example.thestar1.repository.RoomInventoryRepository;
 import com.example.thestar1.service.OrderService;
+import com.example.thestar1.service.RedisRoomStock;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +23,8 @@ class RedisBookRoomTest {
     private StringRedisTemplate redisTemplate;
     @Autowired
     private RoomInventoryRepository roomInventoryRepository;
+    @Autowired
+    private RedisRoomStock stock;
 
     @Test
     @Transactional
@@ -34,16 +37,16 @@ class RedisBookRoomTest {
         redisTemplate.delete(key);   // 先清，確保從乾淨狀態開始
 
         roomInventoryRepository.initInventory(date, roomTypeId);   // 確保 DB 有這格
-        orderService.initRedisRoom(roomTypeId, date);              // 種值進 Redis
+        stock.initRedisRoom(roomTypeId, date);              // 種值進 Redis
 
         int qty = Integer.parseInt(redisTemplate.opsForValue().get(key));
 
         // 扣到剛好全部 → true，Redis 變 0
-        assertTrue(orderService.tryRedisBookRoom(roomTypeId, date, qty));
+        assertTrue(stock.bookRedisRoom(roomTypeId, date, qty));
         assertEquals("0", redisTemplate.opsForValue().get(key));
 
         // 再扣 1 → false，且補回去後還是 0
-        assertFalse(orderService.tryRedisBookRoom(roomTypeId, date, 1));
+        assertFalse(stock.bookRedisRoom(roomTypeId, date, 1));
         assertEquals("0", redisTemplate.opsForValue().get(key));
 
         redisTemplate.delete(key);   // 收尾清掉
