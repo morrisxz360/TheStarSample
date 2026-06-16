@@ -13,7 +13,7 @@ public class DevOrderConfirm {
     private final OrderService orderService;
     private final OrderRepository orderRepository;
 
-    // 跟 OrderController 同一套建構子注入
+
     public DevOrderConfirm(OrderService orderService, OrderRepository orderRepository) {
         this.orderService = orderService;
         this.orderRepository = orderRepository;

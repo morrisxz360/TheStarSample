@@ -1,6 +1,6 @@
-package com.example.thestar1.controller; // 照你專案實際的 controller 套件調整
+package com.example.thestar1.controller;
 
-import com.example.thestar1.entity.MemberVO;   // 照 MemberVO 實際所在套件調整
+import com.example.thestar1.entity.MemberVO;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
