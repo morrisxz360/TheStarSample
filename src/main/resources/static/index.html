@@ -189,10 +189,10 @@
       <div class="hbar">
         <div class="logo"><span class="star">✦</span><b>THE STAR</b><small>Hotel &amp; Residences</small></div>
         <nav class="menu">
-          <button :class="{on:nav==='book'}" @click="nav='book'">預訂客房</button>
-          <button :class="{on:nav==='orders'}" @click="nav='orders';loadOrders()">我的預訂</button>
-          <button :class="{on:nav==='admin'}" @click="nav='admin';loadAdmin()">後台訂單</button>
-          <button :class="{on:nav==='stay'}" @click="nav='stay'">房務管理</button>
+          <button v-if="member.on" :class="{on:nav==='book'}" @click="nav='book'">預訂客房</button>
+          <button v-if="member.on" :class="{on:nav==='orders'}" @click="nav='orders';loadOrders()">我的預訂</button>
+          <button v-if="employee.on" :class="{on:nav==='admin'}" @click="nav='admin';loadAdmin()">後台訂單</button>
+          <button v-if="employee.on" :class="{on:nav==='stay'}" @click="nav='stay'">房務管理</button>
         </nav>
         <div class="hright">
           <div class="ident">
@@ -205,7 +205,7 @@
     </header>
 
     <!-- ===== 預訂客房 ===== -->
-    <section v-if="nav==='book'">
+    <section v-if="member.on && nav==='book'">
       <div class="hero"><div class="inner"><div class="up">Reservations</div><h1>預訂您的停留</h1><div class="rule"></div></div></div>
       <div class="wrap">
         <div class="sechead"><div class="up">Booking</div><h2>建立訂房</h2><p>選擇日期與房型，為您保留專屬客房</p></div>
@@ -233,7 +233,7 @@
     </section>
 
     <!-- ===== 我的預訂 ===== -->
-    <section v-if="nav==='orders'">
+    <section v-if="member.on && nav==='orders'">
       <div class="wrap">
         <div class="sechead"><div class="up">My Stay</div><h2>我的預訂</h2><p>檢視並管理您的訂房</p></div>
         <div class="stab">
@@ -279,7 +279,7 @@
     </section>
 
     <!-- ===== 後台訂單 ===== -->
-    <section v-if="nav==='admin'">
+    <section v-if="employee.on && nav==='admin'">
       <div class="wrap">
         <div class="sechead"><div class="up">Back Office</div><h2>全站訂單</h2><p>需員工身分</p></div>
         <div class="stab">
@@ -319,24 +319,40 @@
     </section>
 
     <!-- ===== 房務管理 ===== -->
-    <section v-if="nav==='stay'">
+    <section v-if="employee.on && nav==='stay'">
       <div class="wrap">
-        <div class="sechead"><div class="up">Housekeeping</div><h2>房務管理</h2><p>查房型空房 · 辦理入住 / 退房 · 住宿紀錄</p></div>
+        <div class="sechead"><div class="up">Housekeeping</div><h2>房務管理</h2><p>輸入訂單查明細 · 配房入住 / 退房 · 住宿紀錄</p></div>
 
         <div class="panel" style="margin-bottom:30px">
           <div class="roomrow" style="margin-bottom:0">
-            <div class="field" style="width:220px"><label>房型</label>
-              <select v-model.number="stay.roomTypeId">
-                <option :value="null" disabled>請選擇房型</option>
-                <option v-for="t in ROOM_TYPES" :key="t.id" :value="t.id">{{ t.name }}</option>
-              </select>
+            <div class="field" style="width:220px"><label>訂單 ID</label>
+              <input type="number" v-model.number="stay.orderId" placeholder="輸入訂單編號">
             </div>
-            <button class="btn sm" style="margin-bottom:2px" @click="loadRooms">查詢空房</button>
+            <button class="btn sm" style="margin-bottom:2px" @click="loadCheckInLines">查詢明細</button>
           </div>
-          <div class="roomgrid" v-if="stay.rooms.length">
-            <div class="rchip" v-for="r in stay.rooms" :key="r.roomId" @click="stay.checkin.roomId=r.roomId">
-              <span class="dot" :class="r.roomStatus===0?'free':'busy'"></span>
-              <span class="no">{{ r.roomId }}</span><small>{{ r.roomStatus===0?'空閒':'入住中' }}</small>
+
+          <table v-if="stay.lines.length" style="margin-top:24px">
+            <thead><tr><th>房型</th><th>訂房數</th><th>已入住</th><th>剩餘</th><th style="text-align:right">配房</th></tr></thead>
+            <tbody>
+              <tr v-for="l in stay.lines" :key="l.orderListId">
+                <td>{{ l.roomTypeName }}</td><td>{{ l.quantity }}</td><td>{{ l.checkedIn }}</td><td>{{ l.remaining }}</td>
+                <td style="text-align:right">
+                  <button class="btn ghost sm" @click="openRooms(l)" :disabled="l.remaining<=0">
+                    {{ l.remaining>0?'配房':'已配滿' }}</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div v-if="stay.rooms.length" style="margin-top:24px">
+            <p class="hint" style="margin-bottom:12px">選房間 — {{ stay.activeTypeName }}（綠＝可選 · 紅＝入住中／停用）</p>
+            <div class="roomgrid">
+              <div class="rchip" v-for="r in stay.rooms" :key="r.roomId" @click="pickRoom(r)"
+                   :style="{outline: stay.checkin.roomId===r.roomId?'2px solid #ffd54a':'none', opacity:(r.roomStatus===1||r.roomSwitchStatus===false)?0.5:1, cursor:(r.roomStatus===1||r.roomSwitchStatus===false)?'not-allowed':'pointer'}">
+                <span class="dot" :class="(r.roomStatus===0&&r.roomSwitchStatus!==false)?'free':'busy'"></span>
+                <span class="no">{{ r.roomId }}</span>
+                <small>{{ r.roomSwitchStatus===false?'停用':(r.roomStatus===0?'空閒':'入住中') }}</small>
+              </div>
             </div>
           </div>
         </div>
@@ -344,8 +360,10 @@
         <div class="grid g2">
           <div class="panel">
             <h3 style="font-size:24px;margin-bottom:24px">辦理入住</h3>
-            <div class="field" style="margin-bottom:22px"><label>Order List ID</label><input type="number" v-model.number="stay.checkin.orderListId"></div>
-            <div class="field" style="margin-bottom:22px"><label>房號（點上方空房自動帶入）</label><input type="number" v-model.number="stay.checkin.roomId"></div>
+            <div class="field" style="margin-bottom:22px"><label>配房明細</label>
+              <input :value="stay.activeListId?(stay.activeTypeName+'（明細 #'+stay.activeListId+'）'):'— 請先在上方點「配房」—'" disabled></div>
+            <div class="field" style="margin-bottom:22px"><label>房號（點上方空房自動帶入）</label>
+              <input :value="stay.checkin.roomId||''" placeholder="點上方空房自動帶入" disabled></div>
             <div class="field" style="margin-bottom:30px"><label>入住貴賓</label><input v-model="stay.checkin.stayCustomer" placeholder="姓名"></div>
             <button class="btn block" @click="checkIn" :disabled="!employee.on">確認入住</button>
           </div>
@@ -405,7 +423,8 @@ createApp({
       form:{checkInDate:d(1),checkOutDate:d(2),couponId:null,rooms:[{roomTypeId:null,qty:1}]},
       orders:{status:0,page:0,size:10,list:[],totalPages:0,counts:{},open:{},detail:{}},
       admin:{status:0,page:0,size:10,list:[],totalPages:0,counts:{},open:{},detail:{}},
-      stay:{roomTypeId:null,rooms:[],checkin:{orderListId:null,roomId:null,stayCustomer:''},
+      stay:{orderId:null,lines:[],activeListId:null,activeTypeName:'',rooms:[],
+            checkin:{orderListId:null,roomId:null,stayCustomer:''},
             checkoutRoomId:null,find:{roomId:null,stayCustomer:'',checkInTime:'',checkOutTime:''},records:[]},
       toasts:[], logLines:[], _tid:0,
     };
@@ -470,15 +489,28 @@ createApp({
       try{ await this.api(`/thestar/order/cancel/${orderId}`,{method:'POST',headers:{'Content-Type':'text/plain'},body:reason});
         this.toast('ok','已取消',`No.${orderId}`); this.loadOrders();
       }catch(e){ this.toast('err','取消失敗',this.errMsg(e)); } },
-    async loadRooms(){ if(!this.stay.roomTypeId){ this.toast('warn','請先輸入房型 ID'); return; }
-      try{ this.stay.rooms=await this.api(`/thestar/admin/stayrecord/rooms/${this.stay.roomTypeId}`);
-        this.toast(this.stay.rooms.length?'ok':'warn','查詢完成',
-          this.stay.rooms.length?`此房型 ${this.stay.rooms.length} 間空房`:'此房型查無空房（都入住/停用或房型不存在）');
-      }catch(e){ this.stay.rooms=[]; this.toast('err','查詢失敗',this.errMsg(e)); } },
+    async loadCheckInLines(){ if(!this.stay.orderId){ this.toast('warn','請先輸入訂單 ID'); return; }
+      try{ this.stay.lines=await this.api(`/thestar/admin/stayrecord/checkin-order/${this.stay.orderId}`);
+        this.stay.rooms=[]; this.stay.activeListId=null; this.stay.activeTypeName='';
+        this.stay.checkin.orderListId=null; this.stay.checkin.roomId=null;
+        this.toast('ok','查詢完成',`共 ${this.stay.lines.length} 個房型`);
+      }catch(e){ this.stay.lines=[]; this.toast('err','查詢失敗',this.errMsg(e)); } },
+    async openRooms(line){ if(line.remaining<=0){ this.toast('warn','此房型已配滿'); return; }
+      this.stay.activeListId=line.orderListId; this.stay.activeTypeName=line.roomTypeName;
+      this.stay.checkin.orderListId=line.orderListId; this.stay.checkin.roomId=null;
+      try{ this.stay.rooms=await this.api(`/thestar/admin/stayrecord/checkin-rooms/${line.orderListId}`);
+      }catch(e){ this.stay.rooms=[]; this.toast('err','房間載入失敗',this.errMsg(e)); } },
+    pickRoom(r){ if(r.roomStatus===1||r.roomSwitchStatus===false)return;  // 入住中/停用不可選
+      this.stay.checkin.roomId=r.roomId; },
     async checkIn(){
-      if(!this.stay.checkin.orderListId||!this.stay.checkin.roomId){ this.toast('warn','請填 Order List ID 與房號'); return; }
+      if(!this.stay.checkin.orderListId){ this.toast('warn','請先在明細點「配房」'); return; }
+      if(!this.stay.checkin.roomId){ this.toast('warn','請點一間空房'); return; }
       try{ await this.api('/thestar/admin/stayrecord/checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.stay.checkin)});
         this.toast('ok','入住成功',`房號 ${this.stay.checkin.roomId} · ${this.stay.checkin.stayCustomer||''}`);
+        // 重新整理:明細的已入住/剩餘 + 房間狀態(剛配的變紅)
+        this.stay.lines=await this.api(`/thestar/admin/stayrecord/checkin-order/${this.stay.orderId}`);
+        this.stay.rooms=await this.api(`/thestar/admin/stayrecord/checkin-rooms/${this.stay.activeListId}`);
+        this.stay.checkin.roomId=null; this.stay.checkin.stayCustomer='';
       }catch(e){ this.toast('err','入住失敗',this.errMsg(e)); } },
     async checkOut(){ if(!this.stay.checkoutRoomId){ this.toast('warn','請輸入退房房號'); return; }
       if(!confirm(`房號 ${this.stay.checkoutRoomId} 確認退房？`))return;

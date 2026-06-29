@@ -1,8 +1,10 @@
 package com.example.thestar1.stayrecord.controller;
 
 
+import com.example.thestar1.room.repository.RoomRepository;
 import com.example.thestar1.stayrecord.dto.CheckInDTO;
 import com.example.thestar1.room.entity.RoomVO;
+import com.example.thestar1.stayrecord.dto.FindCheckInRoomDTO;
 import com.example.thestar1.stayrecord.entity.StayRecordVO;
 import com.example.thestar1.stayrecord.service.StayRecordService;
 import org.springframework.http.HttpStatus;
@@ -19,7 +21,7 @@ public class AdminStayRecordController {
 
     private final StayRecordService stayRecordService;
 
-    public AdminStayRecordController(StayRecordService stayRecordService) {
+    public AdminStayRecordController(StayRecordService stayRecordService, RoomRepository roomRepository) {
         this.stayRecordService = stayRecordService;
     }
 
@@ -67,4 +69,27 @@ public class AdminStayRecordController {
         List<StayRecordVO> list = stayRecordService.findStayRecord(roomId, stayCustomer, checkInTime, checkOutTime);
         return ResponseEntity.ok(list);
     }
+
+    @GetMapping("/checkin-order/{orderId}")
+    public ResponseEntity<List<FindCheckInRoomDTO>> checkInLines(@PathVariable Integer orderId,
+                                                                 HttpSession session) {
+        Integer employeeId = (Integer) session.getAttribute("loginEmployee");
+        if (employeeId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(stayRecordService.findCheckInLines(orderId));
+    }
+
+    // 階段2:點某筆明細配房
+    @GetMapping("/checkin-rooms/{orderListId}")
+    public ResponseEntity<List<RoomVO>> checkInRooms(@PathVariable Integer orderListId,
+                                                     HttpSession session) {
+        Integer employeeId = (Integer) session.getAttribute("loginEmployee");
+        if (employeeId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(stayRecordService.findRoomsByOrderList(orderListId));
+    }
+
 }
+
