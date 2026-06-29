@@ -1,7 +1,6 @@
 package com.example.thestar1.stayrecord.controller;
 
 
-import com.example.thestar1.room.repository.RoomRepository;
 import com.example.thestar1.stayrecord.dto.CheckInDTO;
 import com.example.thestar1.room.entity.RoomVO;
 import com.example.thestar1.stayrecord.dto.FindCheckInRoomDTO;
@@ -21,13 +20,8 @@ public class AdminStayRecordController {
 
     private final StayRecordService stayRecordService;
 
-    public AdminStayRecordController(StayRecordService stayRecordService, RoomRepository roomRepository) {
+    public AdminStayRecordController(StayRecordService stayRecordService) {
         this.stayRecordService = stayRecordService;
-    }
-
-    @GetMapping("/rooms/{roomTypeId}")
-    public List<RoomVO> availableRoom(@PathVariable Integer roomTypeId) {
-        return stayRecordService.findAvailableRoom(roomTypeId);
     }
 
     @PostMapping("/checkin")

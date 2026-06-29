@@ -50,13 +50,13 @@ public class StayRecordService {
 
         OrderVO order = orderList.getOrdervo();
         if (order.getOrderStatus() != 1) {
-            throw new IllegalStateException("訂單非以付款，無法checkin");
+            throw new IllegalStateException("訂單非已付款，無法checkin");
         }
 
 
         int fullyBooked = stayRecordRepository.countByOrderListvo(orderList);
         if (fullyBooked >= orderList.getQuantity()) {
-            throw new IllegalStateException("此明細以配滿房間數");
+            throw new IllegalStateException("此明細已配滿房間數");
         }
 
         RoomVO room = roomRepository.findByRoomId(dto.getRoomId());
@@ -65,7 +65,7 @@ public class StayRecordService {
         } else if (!room.getRoomTypeId().equals(orderList.getRoomTypeId())) {
             throw new IllegalStateException("此房型不正確");
         } else if (room.getRoomStatus() == 1) {
-            throw new IllegalStateException("此房間以有人入住");
+            throw new IllegalStateException("此房間已有人入住");
         } else if (room.getRoomSwitchStatus() == false) {
             throw new IllegalStateException("此房間停用中");
         } else {
@@ -125,11 +125,6 @@ public class StayRecordService {
 
     }
 
-
-    public List<RoomVO> findAvailableRoom(Integer roomTypeId) {
-        return roomRepository.findByRoomTypeIdAndRoomStatusAndRoomSwitchStatus(roomTypeId, (byte) 0, true);
-
-    }
 
     // 後台輸入訂單ID,列出這張訂單每個房型「訂幾間/已入住/還剩幾間」,給配房用
     @Transactional(readOnly = true)
