@@ -27,6 +27,8 @@ public class RedisRoomStock {
         return "room:" + roomTypeId + ":" + date;
     }
 
+
+    //初始化redis庫存
     public void initRedisRoom(Integer roomTypeId, LocalDate date) {
         String key = roomKey(roomTypeId, date);
         Integer available = roomInventoryRepository.checkInventory(roomTypeId, date);
@@ -45,6 +47,7 @@ public class RedisRoomStock {
     }
 
 
+    //redis訂房
     public boolean bookRedisRoom(Integer roomTypeId, LocalDate date, int qty) {
         String key = roomKey(roomTypeId, date);
         long result = redisTemplate.opsForValue().decrement(key, qty);

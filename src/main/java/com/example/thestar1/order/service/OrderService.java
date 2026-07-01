@@ -153,7 +153,7 @@ public class OrderService {
             return orderRepository.save(ordervo);
 
         } catch (RuntimeException e) {
-            //交易失敗要手動回滾redis
+            //交易失敗要手動回滾redis用redis已操作過的明細集合紀錄
             for (DailyBooking d : redisBooked) {
                 redisRoomStock.releaseRoom(d.roomTypeId, d.date, d.qty);
             }

@@ -15,6 +15,7 @@ import java.time.LocalDate;
 // 泛型二 = 那個 entity 的主鍵型別（複合主鍵 RoomInventoryId）
 public interface RoomInventoryRepository extends JpaRepository<RoomInventoryVO, RoomInventoryId> {
 
+    //createOrder用來初始化庫存
     @Modifying
     @Query(value = "INSERT INTO ROOM_INVENTORY(INVENTORY_DATE,ROOM_TYPE_ID, TOTAL_AMOUNT,BOOKED_AMOUNT) " +
             "SELECT :date,:roomTypeId,rt.ROOM_TYPE_AMOUNT,0 FROM ROOM_TYPE rt WHERE  rt.ROOM_TYPE_ID = :roomTypeId " +
@@ -26,6 +27,8 @@ public interface RoomInventoryRepository extends JpaRepository<RoomInventoryVO, 
     //                        如果沒有將日期還有房型以及房型的總數以及未下單所以已訂房數還是零的資料送進資料庫(房型總數需要從房型表取得)
 
 
+
+    //createOrder用來訂房
     @Modifying
     @Query(value = "UPDATE ROOM_INVENTORY SET BOOKED_AMOUNT = BOOKED_AMOUNT + :qty WHERE INVENTORY_DATE = :date " +
             "AND ROOM_TYPE_ID = :roomTypeId AND BOOKED_AMOUNT + :qty <= TOTAL_AMOUNT", nativeQuery = true)
@@ -39,6 +42,8 @@ public interface RoomInventoryRepository extends JpaRepository<RoomInventoryVO, 
     //                         才能完成預訂否則直接回傳0成功回傳1
 
 
+
+    //cancelOrder跟cleanExpiredOrder用來釋放庫存
     @Modifying
     @Query(value = "UPDATE ROOM_INVENTORY SET BOOKED_AMOUNT = BOOKED_AMOUNT - :qty " +
             "WHERE INVENTORY_DATE = :date AND ROOM_TYPE_ID = :roomTypeId", nativeQuery = true)
@@ -47,8 +52,11 @@ public interface RoomInventoryRepository extends JpaRepository<RoomInventoryVO, 
                     @Param("qty") int qty);
 
 
+
+    //redis用來查詢目前庫存房間數有多少
     @Query(value = "SELECT TOTAL_AMOUNT-BOOKED_AMOUNT FROM ROOM_INVENTORY " +
             "WHERE INVENTORY_DATE = :date AND ROOM_TYPE_ID = :roomTypeId", nativeQuery = true)
     Integer checkInventory(@Param("roomTypeId") Integer roomTypeId,
                            @Param("date") LocalDate date);
 }
+
